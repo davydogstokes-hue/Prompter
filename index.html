@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PrompterCam</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #080b0f;
+    --panel: #141b24;
+    --border: rgba(255,255,255,0.07);
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --text: #f0f4f8;
+    --muted: #6b7a8d;
+    --recording: #ff2d2d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden; position: fixed; top: 0; left: 0;
+  }
+
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    transition: opacity 0.35s, transform 0.35s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(14px); }
+
+  /* ─── PERMISSION SCREEN ──────────────────────────────────── */
+  #perm-screen {
+    background: var(--bg);
+    align-items: center; justify-content: center;
+    padding: max(env(safe-area-inset-top),28px) 28px max(env(safe-area-inset-bottom),28px);
+    overflow-y: auto; gap: 0;
+  }
+  .perm-icon {
+    width: 72px; height: 72px; border-radius: 22px;
+    background: var(--panel); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px; margin-bottom: 22px;
+    box-shadow: 0 0 40px rgba(0,212,170,0.1);
+  }
+  #perm-screen h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 25px; margin-bottom: 10px;
+  }
+  #perm-screen > p {
+    font-size: 14px; color: var(--muted); line-height: 1.65;
+    max-width: 320px; text-align: center; margin-bottom: 28px;
+  }
+  .perm-steps {
+    width: 100%; max-width: 360px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 24px;
+  }
+  .perm-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+  }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(0,212,170,0.12); color: var(--accent);
+    font-size: 13px; font-weight: 500; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 14px; line-height: 1.55; color: var(--text); }
+  .step-text em { color: var(--accent); font-style: normal; font-weight: 500; }
+  .step-text small { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .perm-note {
+    font-size: 12px; color: var(--muted); max-width: 300px;
+    line-height: 1.6; margin-bottom: 24px; text-align: center;
+  }
+  .perm-btn {
+    width: 100%; max-width: 360px;
+    background: var(--accent); color: #080b0f;
+    border: none; border-radius: 14px; padding: 17px;
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+    letter-spacing: 0.03em; cursor: pointer;
+    box-shadow: 0 4px 24px rgba(0,212,170,0.28);
+    transition: transform 0.15s;
+  }
+  .perm-btn:active { transform: scale(0.97); }
+
+  /* ─── SETUP SCREEN ───────────────────────────────────────── */
+  #setup {
+    overflow-y: auto;
+    padding: max(env(safe-area-inset-top),14px) 20px max(env(safe-area-inset-bottom),20px);
+  }
+  .setup-inner {
+    display: flex; flex-direction: column;
+    max-width: 820px; margin: 0 auto;
+  }
+
+  @media (orientation: landscape) {
+    .setup-inner { flex-direction: row; gap: 20px; align-items: flex-start; }
+    .setup-col-left  { flex: 1.3; }
+    .setup-col-right { flex: 1; position: sticky; top: 0; }
+    #setup { padding-top: max(env(safe-area-inset-top),8px); }
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0 18px;
+  }
+  .logo-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 12px var(--accent);
+    animation: pulse-dot 2s ease-in-out infinite; flex-shrink: 0;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(0.8)} }
+  .logo h1 { font-family: 'DM Serif Display', serif; font-size: 19px; }
+
+  .section-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .setup-section { margin-bottom: 20px; }
+
+  textarea {
+    width: 100%; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 15px; line-height: 1.6; padding: 14px 16px;
+    resize: none; outline: none; transition: border-color 0.2s;
+  }
+  @media (orientation: portrait)  { textarea { min-height: 180px; } }
+  @media (orientation: landscape) { textarea { min-height: 130px; } }
+  textarea:focus  { border-color: rgba(0,212,170,0.4); }
+  textarea::placeholder { color: var(--muted); }
+
+  .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .controls-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .control-box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .cb-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .val { font-size: 20px; font-family: 'DM Serif Display', serif; color: var(--accent); }
+  .val span { font-size: 11px; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: var(--border); border-radius: 2px; outline: none; margin-top: 8px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 8px rgba(0,212,170,0.5);
+  }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 13px 15px; margin-top: 10px;
+  }
+  .toggle-label { font-size: 14px; }
+  .toggle-label small { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .toggle {
+    position: relative; width: 44px; height: 26px;
+    background: var(--border); border-radius: 13px;
+    cursor: pointer; transition: background 0.3s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%; background: white;
+    transition: transform 0.3s; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .start-btn {
+    width: 100%; margin-top: 18px;
+    background: var(--accent); color: #080b0f;
+    border: none; border-radius: 14px; padding: 17px;
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
+    letter-spacing: 0.04em; cursor: pointer;
+    box-shadow: 0 4px 24px rgba(0,212,170,0.3);
+    transition: transform 0.15s; margin-bottom: 6px;
+  }
+  .start-btn:active { transform: scale(0.97); }
+
+  /* ─── PROMPTER SCREEN ────────────────────────────────────── */
+  #prompter { background: #000; overflow: hidden; }
+
+  #camera-bg {
+    position: absolute; inset: 0;
+    object-fit: cover; width: 100%; height: 100%;
+    transform: scaleX(-1); z-index: 0;
+  }
+
+  #prompter-overlay { position: absolute; inset: 0; z-index: 1; }
+
+  body.portrait #prompter-overlay {
+    background: linear-gradient(to bottom,
+      rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.58) 36%,
+      rgba(0,0,0,0.12) 56%, rgba(0,0,0,0.32) 100%);
+  }
+  body.landscape #prompter-overlay {
+    background: linear-gradient(to right,
+      rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 36%,
+      rgba(0,0,0,0.12) 55%, rgba(0,0,0,0.32) 100%);
+  }
+
+  #script-container {
+    position: absolute; z-index: 2; overflow: hidden;
+  }
+  body.portrait #script-container {
+    top: 0; left: 0; right: 0; height: 60%;
+    padding-top: max(env(safe-area-inset-top), 14px);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 9%, black 74%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 9%, black 74%, transparent 100%);
+  }
+  body.landscape #script-container {
+    top: 0; bottom: 0; left: 0; width: 54%;
+    padding-left: max(env(safe-area-inset-left), 14px);
+    mask-image: linear-gradient(to right, transparent 0%, black 7%, black 76%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 7%, black 76%, transparent 100%);
+  }
+
+  #script-inner { will-change: transform; }
+  body.portrait  #script-inner { padding: 42px 24px 100px; }
+  body.landscape #script-inner { padding: 36px 18px 60px 22px; }
+
+  .script-word {
+    display: inline;
+    font-family: 'DM Serif Display', serif;
+    line-height: 1.55; letter-spacing: 0.01em;
+    color: rgba(255,255,255,0.3);
+    transition: color 0.25s;
+  }
+  .script-word.spoken   { color: rgba(255,255,255,0.16); }
+  .script-word.active   { color: #fff; text-shadow: 0 0 20px rgba(0,212,170,0.65), 0 0 40px rgba(0,212,170,0.2); }
+  .script-word.upcoming { color: rgba(255,255,255,0.52); }
+  body.landscape .script-word { font-size: 0.84em; }
+
+  /* Progress bar */
+  #progress-bar {
+    position: absolute; z-index: 5;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  body.portrait  #progress-bar { top: 0; left: 0; height: 2px; width: 0%; }
+  body.landscape #progress-bar { top: 0; left: 0; width: 2px; height: 0%; }
+
+  /* Status pill */
+  #status-pill {
+    position: absolute; z-index: 4;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 5px 14px; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  body.portrait  #status-pill { top: max(env(safe-area-inset-top),12px); left: 50%; transform: translateX(-50%); }
+  body.landscape #status-pill { bottom: max(env(safe-area-inset-bottom),14px); left: 50%; transform: translateX(-50%); }
+
+  #status-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); transition: background 0.3s;
+  }
+  #status-pill.speaking .dot  { background: var(--accent);  box-shadow: 0 0 6px var(--accent); }
+  #status-pill.paused   .dot  { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  #status-pill.calibrating .dot {
+    background: #fff;
+    animation: cal-blink 0.7s ease-in-out infinite;
+  }
+  @keyframes cal-blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* Voice meter */
+  #voice-meter {
+    position: absolute; z-index: 3;
+    display: flex; gap: 3px; align-items: center;
+    pointer-events: none;
+  }
+  body.portrait  #voice-meter { bottom: 96px; left: 50%; transform: translateX(-50%); }
+  body.landscape #voice-meter { top: 50%; right: 12px; transform: translateY(-50%) rotate(90deg); }
+
+  .bar { width: 3px; background: var(--accent); border-radius: 2px; opacity: 0.7; transition: height 0.08s ease-out; }
+
+  /* HUD */
+  #hud { position: absolute; z-index: 3; display: flex; align-items: center; }
+
+  body.portrait #hud {
+    bottom: 0; left: 0; right: 0; flex-direction: row;
+    justify-content: space-between;
+    padding: 12px 30px max(env(safe-area-inset-bottom),20px);
+    background: linear-gradient(to top, rgba(0,0,0,0.68) 0%, transparent 100%);
+  }
+  body.landscape #hud {
+    top: 0; bottom: 0; right: 0; flex-direction: column;
+    justify-content: center; gap: 18px;
+    padding: max(env(safe-area-inset-top),20px) max(env(safe-area-inset-right),18px) max(env(safe-area-inset-bottom),20px) 12px;
+    background: linear-gradient(to left, rgba(0,0,0,0.62) 0%, transparent 100%);
+  }
+
+  .hud-btn {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%; width: 50px; height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s, transform 0.15s;
+    color: white; font-size: 19px; flex-shrink: 0;
+  }
+  .hud-btn:active { transform: scale(0.92); }
+
+  #rec-btn {
+    width: 62px; height: 62px;
+    background: rgba(255,45,45,0.18); border-color: rgba(255,45,45,0.55);
+  }
+  #rec-btn.recording {
+    background: var(--recording); border-color: var(--recording);
+    animation: rec-pulse 1.5s ease-out infinite;
+  }
+  @keyframes rec-pulse {
+    0%  { box-shadow: 0 0 0 0   rgba(255,45,45,0.45); }
+    70% { box-shadow: 0 0 0 14px rgba(255,45,45,0); }
+    100%{ box-shadow: 0 0 0 0   rgba(255,45,45,0); }
+  }
+  .rec-icon { width: 22px; height: 22px; border-radius: 50%; background: #ff4444; transition: border-radius 0.3s; }
+  #rec-btn.recording .rec-icon { border-radius: 3px; background: white; width: 17px; height: 17px; }
+
+  /* Toast */
+  #toast {
+    position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+    z-index: 10; background: rgba(220,60,60,0.92); border-radius: 12px;
+    padding: 10px 18px; font-size: 13px; color: white;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  /* Finish overlay */
+  #finish-overlay {
+    position: absolute; inset: 0; z-index: 20;
+    background: rgba(8,11,15,0.93); backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    opacity: 0; pointer-events: none; transition: opacity 0.4s;
+  }
+  #finish-overlay.show { opacity: 1; pointer-events: all; }
+  #finish-overlay h2 { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--accent); }
+  #finish-overlay p  { color: var(--muted); font-size: 14px; text-align: center; padding: 0 32px; }
+  .finish-btns { display: flex; flex-direction: column; gap: 10px; width: 210px; }
+  .finish-btn {
+    padding: 14px; border-radius: 12px; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .finish-btn:active { transform: scale(0.97); }
+  .finish-btn.primary   { background: var(--accent); color: #080b0f; }
+  .finish-btn.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+</style>
+</head>
+<body class="portrait">
+
+<!-- ══ PERMISSION SCREEN ══════════════════════════════════════ -->
+<div class="screen" id="perm-screen">
+  <div class="perm-icon">📷</div>
+  <h2>Camera &amp; Mic Access</h2>
+  <p>PrompterCam needs your camera and microphone. The mic drives the scroll; the camera records your delivery in the highest quality your device supports.</p>
+
+  <div class="perm-steps">
+    <div class="perm-step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        Tap <em>Continue →</em> below. Safari will show two permission prompts — one for <em>Camera</em>, one for <em>Microphone</em>.
+        <small>Both appear one after the other.</small>
+      </div>
+    </div>
+    <div class="perm-step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        Tap <em>Allow</em> on both prompts.
+        <small>If you tap Don't Allow by mistake, follow step 3.</small>
+      </div>
+    </div>
+    <div class="perm-step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        If you denied access, go to <em>Settings → Privacy &amp; Security → Camera</em> (and Microphone) and enable <em>Safari</em>. Then return here.
+        <small>Alternatively: Settings → scroll down to Safari → Camera / Microphone → set to Allow.</small>
+      </div>
+    </div>
+    <div class="perm-step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        For the best experience, tap the <em>Share ⬆</em> button in Safari and choose <em>Add to Home Screen</em>.
+        <small>Removes the browser bar and locks the screen on during use.</small>
+      </div>
+    </div>
+    <div class="perm-step">
+      <div class="step-num">5</div>
+      <div class="step-text">
+        If using a <em>plug-in microphone</em>, connect it before tapping Continue so it is detected automatically.
+        <small>iOS routes to the active audio input at permission time.</small>
+      </div>
+    </div>
+  </div>
+
+  <p class="perm-note">Your camera and microphone are used entirely on-device. Nothing is uploaded or stored remotely.</p>
+  <button class="perm-btn" id="perm-continue-btn">Continue →</button>
+</div>
+
+<!-- ══ SETUP SCREEN ══════════════════════════════════════════ -->
+<div class="screen hidden" id="setup">
+  <div class="setup-inner">
+    <div class="setup-col-left">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        <h1>PrompterCam</h1>
+      </div>
+      <div class="setup-section">
+        <div class="section-label">Your Script</div>
+        <textarea id="script-input" rows="8" placeholder="Paste or type your script here. The teleprompter scrolls in time with your voice — pausing when you do."></textarea>
+      </div>
+    </div>
+    <div class="setup-col-right">
+      <div class="setup-section" style="margin-top:0">
+        <div class="section-label" style="margin-top:6px">Display</div>
+        <div class="controls-row">
+          <div class="control-box">
+            <div class="cb-label">Font Size</div>
+            <div class="val" id="font-val">28<span>px</span></div>
+            <input type="range" id="font-size" min="20" max="48" value="28">
+          </div>
+          <div class="control-box">
+            <div class="cb-label">Scroll Speed</div>
+            <div class="val" id="speed-val">1.0<span>×</span></div>
+            <input type="range" id="scroll-speed" min="5" max="20" value="10">
+          </div>
+        </div>
+        <div class="controls-row" style="margin-top:10px">
+          <div class="control-box" style="grid-column: 1 / -1">
+            <div class="cb-label">Mic Sensitivity</div>
+            <div class="val" id="sens-val">5<span> / 10</span></div>
+            <input type="range" id="sens-slider" min="1" max="10" value="5">
+          </div>
+        </div>
+      </div>
+      <div class="setup-section">
+        <div class="section-label">Options</div>
+        <div class="toggle-row">
+          <div class="toggle-label">Record Video <small>Saves to Photos via share sheet</small></div>
+          <div class="toggle on" id="rec-toggle"></div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Mirror Text <small>For beamsplitter glass rigs</small></div>
+          <div class="toggle" id="mirror-toggle"></div>
+        </div>
+      </div>
+      <button class="start-btn" id="start-btn">Begin Session →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PROMPTER SCREEN ════════════════════════════════════════ -->
+<div class="screen hidden" id="prompter">
+  <video id="camera-bg" autoplay playsinline muted></video>
+  <div id="prompter-overlay"></div>
+  <div id="progress-bar"></div>
+
+  <div id="status-pill">
+    <div class="dot"></div>
+    <span id="status-text">Calibrating…</span>
+  </div>
+
+  <div id="script-container">
+    <div id="script-inner"></div>
+  </div>
+
+  <div id="voice-meter">
+    <div class="bar" style="height:4px"  id="b1"></div>
+    <div class="bar" style="height:8px"  id="b2"></div>
+    <div class="bar" style="height:12px" id="b3"></div>
+    <div class="bar" style="height:8px"  id="b4"></div>
+    <div class="bar" style="height:4px"  id="b5"></div>
+  </div>
+
+  <div id="hud">
+    <div class="hud-btn" id="back-btn">←</div>
+    <div class="hud-btn" id="rec-btn"><div class="rec-icon"></div></div>
+    <div class="hud-btn" id="reset-btn">↺</div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="finish-overlay">
+    <h2>Script Complete</h2>
+    <p>You've reached the end of your script.</p>
+    <div class="finish-btns">
+      <button class="finish-btn primary"   id="save-btn">Save / Share Recording</button>
+      <button class="finish-btn secondary" id="restart-btn">Start Again</button>
+      <button class="finish-btn secondary" id="edit-btn">Edit Script</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// ORIENTATION
+// ═══════════════════════════════════════════════════════════════
+function isLandscape() { return window.innerWidth > window.innerHeight; }
+
+function updateOrientation() {
+  const land = isLandscape();
+  document.body.classList.toggle('landscape', land);
+  document.body.classList.toggle('portrait',  !land);
+  if (!document.getElementById('prompter').classList.contains('hidden')) {
+    scrollToWord(Math.floor(state.currentWordIndex), true);
+    updateProgress(Math.floor(state.currentWordIndex));
+  }
+}
+
+window.addEventListener('resize',            updateOrientation);
+window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 280));
+updateOrientation();
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  words: [], currentWordIndex: 0,
+  scrollX: 0, scrollY: 0, targetScrollX: 0, targetScrollY: 0,
+  isPaused: true, isSpeaking: false,
+  recordEnabled: true, mirrorText: false,
+  fontSize: 28, speedMultiplier: 1.0, wordsPerSecond: 2.8,
+
+  // Audio analysis
+  audioCtx: null, analyser: null,
+  micStream: null,         // raw high-quality stream → recorder
+  analysisStream: null,    // processed clone → voice detection
+
+  // Camera + recorder
+  cameraStream: null, mediaRecorder: null, recordedChunks: [],
+  isRecording: false, recordingMime: '',
+  rafId: null, silenceTimer: null,
+
+  // Voice detection — adaptive calibration + hysteresis
+  // sensitivityLevel: 1–10 from slider; maps to startThreshold
+  sensitivityLevel: 5,
+  noiseFloor: 3,           // measured during calibration
+  startThreshold: 10,      // RMS above which speech begins  (recalculated after calibration)
+  stopThreshold: 5,        // RMS below which continued silence counts (slightly lower = hysteresis)
+  silenceDelay: 1600,      // ms of sustained silence before pausing
+  calibrating: true,
+  calibrationFrames: 0,
+  CALIBRATION_DURATION: 90, // ~1.5 s at 60 fps
+  calibrationData: [],
+  fastHistory: [],         // short window → fast speech-start response
+  FAST_LEN: 3,
+  slowHistory: [],         // longer window → stable speech-stop signal
+  SLOW_LEN: 12,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PERMISSION SCREEN
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('perm-continue-btn').addEventListener('click', async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' }, audio: true
+    });
+    state.cameraStream = new MediaStream(stream.getVideoTracks());
+    state.micStream    = new MediaStream(stream.getAudioTracks());
+  } catch(e) {
+    console.warn('Permission denied or unavailable:', e.message);
+  }
+  document.getElementById('perm-screen').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// SETUP UI
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('font-size').addEventListener('input', function() {
+  state.fontSize = parseInt(this.value);
+  document.getElementById('font-val').innerHTML = `${state.fontSize}<span>px</span>`;
+});
+document.getElementById('scroll-speed').addEventListener('input', function() {
+  state.speedMultiplier = (parseInt(this.value) / 10).toFixed(1);
+  document.getElementById('speed-val').innerHTML = `${state.speedMultiplier}<span>×</span>`;
+  state.wordsPerSecond = 2.8 * parseFloat(state.speedMultiplier);
+});
+document.getElementById('sens-slider').addEventListener('input', function() {
+  state.sensitivityLevel = parseInt(this.value);
+  document.getElementById('sens-val').innerHTML = `${state.sensitivityLevel}<span> / 10</span>`;
+});
+document.getElementById('rec-toggle').addEventListener('click', function() {
+  state.recordEnabled = !state.recordEnabled;
+  this.classList.toggle('on', state.recordEnabled);
+});
+document.getElementById('mirror-toggle').addEventListener('click', function() {
+  state.mirrorText = !state.mirrorText;
+  this.classList.toggle('on', state.mirrorText);
+});
+
+document.getElementById('script-input').value =
+`Welcome to PrompterCam. This text scrolls automatically in time with your voice.
+
+When you pause speaking, the scroll stops. When you resume, it continues at your natural pace.
+
+In portrait mode the script appears at the top of the screen — near the front camera. In landscape mode it moves to the left side, which is also near the camera end of your phone.
+
+Replace this text with your own script and tap Begin Session to start.`;
+
+document.getElementById('start-btn').addEventListener('click', startSession);
+
+// ═══════════════════════════════════════════════════════════════
+// SESSION START
+// ═══════════════════════════════════════════════════════════════
+async function startSession() {
+  const scriptText = document.getElementById('script-input').value.trim();
+  if (!scriptText) { showToast('Please enter a script first'); return; }
+
+  state.words = scriptText.split(/\s+/).filter(w => w.length > 0);
+  state.currentWordIndex = 0;
+  state.scrollX = 0; state.scrollY = 0;
+  state.targetScrollX = 0; state.targetScrollY = 0;
+  state.isPaused = true;
+  state.isSpeaking = false;
+  state.calibrating = true;
+  state.calibrationFrames = 0;
+  state.calibrationData = [];
+  state.fastHistory = [];
+  state.slowHistory = [];
+
+  renderScript();
+  document.getElementById('script-inner').style.fontSize = state.fontSize + 'px';
+  document.getElementById('script-container').style.transform = state.mirrorText ? 'scaleX(-1)' : '';
+
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('prompter').classList.remove('hidden');
+  document.getElementById('finish-overlay').classList.remove('show');
+
+  const pb = document.getElementById('progress-bar');
+  pb.style.width = '0%'; pb.style.height = '0%';
+
+  try {
+    await setupCamera();
+    await setupAudio();
+    if (state.recordEnabled) startRecording();
+    startScrollLoop();
+    updateStatus('calibrating');
+    requestWakeLock();
+  } catch(e) {
+    console.error(e);
+    showToast('Camera/mic blocked — check Settings → Safari');
+  }
+}
+
+function renderScript() {
+  const inner = document.getElementById('script-inner');
+  inner.innerHTML = '';
+  state.words.forEach((word, i) => {
+    const span = document.createElement('span');
+    span.className = 'script-word';
+    span.textContent = word + ' ';
+    span.dataset.index = i;
+    inner.appendChild(span);
+  });
+  highlightWords(0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA — highest quality front-facing
+// ═══════════════════════════════════════════════════════════════
+async function setupCamera() {
+  if (state.cameraStream && state.cameraStream.active) {
+    document.getElementById('camera-bg').srcObject = state.cameraStream;
+    return;
+  }
+  // Request the best quality the device supports; iOS will cap at hardware max
+  state.cameraStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: 'user',
+      width:     { ideal: 1920, min: 1280 },
+      height:    { ideal: 1080, min: 720  },
+      frameRate: { ideal: 60,   min: 30   }
+    },
+    audio: false
+  });
+  document.getElementById('camera-bg').srcObject = state.cameraStream;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO — two streams: raw for recording, processed for detection
+// ═══════════════════════════════════════════════════════════════
+async function setupAudio() {
+  // Stop any existing streams
+  if (state.analysisStream) { state.analysisStream.getTracks().forEach(t => t.stop()); state.analysisStream = null; }
+  if (state.audioCtx)       { try { state.audioCtx.close(); } catch(e){} state.audioCtx = null; }
+
+  // --- Raw stream for recording: no processing so the saved file is clean ---
+  // Re-acquire if the stream from the permission screen is stale or missing
+  const needRawStream = !state.micStream || !state.micStream.active;
+  if (needRawStream) {
+    state.micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl:  false,
+        sampleRate:       { ideal: 48000 },
+        channelCount:     { ideal: 2 }
+      },
+      video: false
+    });
+  }
+
+  // --- Processed clone for voice detection: enable DSP to sharpen speech signal ---
+  // We clone the tracks and attach constraints via a separate AudioContext pipeline.
+  // On iOS we can't re-constrain cloned tracks, so we get a second getUserMedia for
+  // the analysis path. This is a second pipeline to the same mic — iOS permits it.
+  let analysisSource;
+  try {
+    const analysisStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl:  true
+      },
+      video: false
+    });
+    state.analysisStream = analysisStream;
+    state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    analysisSource  = state.audioCtx.createMediaStreamSource(analysisStream);
+  } catch(e) {
+    // Fallback: analyse from the raw stream if a second getUserMedia fails
+    const cloned = new MediaStream(state.micStream.getAudioTracks().map(t => t.clone()));
+    state.analysisStream = cloned;
+    state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    analysisSource  = state.audioCtx.createMediaStreamSource(cloned);
+  }
+
+  // Unlock AudioContext on iOS (requires user-gesture context — startSession is one)
+  if (state.audioCtx.state === 'suspended') {
+    await state.audioCtx.resume();
+  }
+
+  state.analyser = state.audioCtx.createAnalyser();
+  state.analyser.fftSize = 2048;
+  state.analyser.smoothingTimeConstant = 0.6; // less smoothing → faster reaction
+  analysisSource.connect(state.analyser);
+
+  startVoiceDetection();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VOICE DETECTION — adaptive calibration + hysteresis
+// ═══════════════════════════════════════════════════════════════
+function startVoiceDetection() {
+  const buf  = new Uint8Array(state.analyser.fftSize);
+  const bars = ['b1','b2','b3','b4','b5'].map(id => document.getElementById(id));
+
+  function computeRMS() {
+    state.analyser.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    return Math.sqrt(sum / buf.length) * 100;
+  }
+
+  // Map sensitivity slider (1–10) to a multiplier for the detection threshold.
+  // Higher sensitivity → lower threshold → responds to quieter voices.
+  // sensitivityLevel 5 = default (multiplier 1.0)
+  function sensitivityMultiplier() {
+    // Range: level 1 → 2.5×  (harder to trigger, good for noisy rooms)
+    //        level 5 → 1.0×  (default)
+    //        level 10 → 0.4× (very sensitive, good for distant/quiet mics)
+    return 2.5 - (state.sensitivityLevel - 1) * (2.1 / 9);
+  }
+
+  function applyThresholds() {
+    const mult = sensitivityMultiplier();
+    // noiseFloor is the measured ambient level during calibration.
+    // startThreshold is set well above noise so breathing doesn't trigger it.
+    state.startThreshold = Math.max(4, (state.noiseFloor * 2.5 + 6) * mult);
+    // stopThreshold is lower — once speaking we don't pause on every natural breath gap.
+    state.stopThreshold  = Math.max(2, (state.noiseFloor * 1.8 + 3) * mult);
+  }
+
+  function tick() {
+    if (!state.analyser) return;
+    const rmsNow = computeRMS();
+
+    // ── Animate voice bars (instantaneous, always responsive) ──
+    const h = Math.min(rmsNow * 2.2, 28);
+    bars[0].style.height = Math.max(2, h * 0.38) + 'px';
+    bars[1].style.height = Math.max(2, h * 0.68) + 'px';
+    bars[2].style.height = Math.max(2, h)         + 'px';
+    bars[3].style.height = Math.max(2, h * 0.68) + 'px';
+    bars[4].style.height = Math.max(2, h * 0.38) + 'px';
+
+    // ── Calibration phase (~1.5 s) — user should be quiet ──
+    if (state.calibrating) {
+      state.calibrationData.push(rmsNow);
+      state.calibrationFrames++;
+      if (state.calibrationFrames >= state.CALIBRATION_DURATION) {
+        // Noise floor = 70th-percentile of calibration samples.
+        // Using p70 rather than median handles rooms where the user starts
+        // speaking a few words during calibration without skewing the floor.
+        const sorted = [...state.calibrationData].sort((a, b) => a - b);
+        state.noiseFloor = sorted[Math.floor(sorted.length * 0.7)];
+        applyThresholds();
+        state.calibrating = false;
+        updateStatus('paused');
+      }
+      requestAnimationFrame(tick);
+      return;
+    }
+
+    // ── Fast history: short window for rapid speech-START detection ──
+    state.fastHistory.push(rmsNow);
+    if (state.fastHistory.length > state.FAST_LEN) state.fastHistory.shift();
+    const rmsFast = state.fastHistory.reduce((a, b) => a + b, 0) / state.fastHistory.length;
+
+    // ── Slow history: longer window for stable speech-STOP detection ──
+    state.slowHistory.push(rmsNow);
+    if (state.slowHistory.length > state.SLOW_LEN) state.slowHistory.shift();
+    const rmsSlow = state.slowHistory.reduce((a, b) => a + b, 0) / state.slowHistory.length;
+
+    if (!state.isSpeaking) {
+      // START speaking: use fast (short) average — responds quickly
+      if (rmsFast > state.startThreshold) {
+        state.isSpeaking = true;
+        state.isPaused   = false;
+        clearTimeout(state.silenceTimer);
+        updateStatus('speaking');
+      }
+    } else {
+      // STOP speaking: use slow (long) average + a delay — robust to breath pauses
+      if (rmsSlow < state.stopThreshold) {
+        clearTimeout(state.silenceTimer);
+        state.silenceTimer = setTimeout(() => {
+          state.isSpeaking = false;
+          state.isPaused   = true;
+          updateStatus('paused');
+        }, state.silenceDelay);
+      } else {
+        // Still above stop threshold — clear any pending silence timer
+        clearTimeout(state.silenceTimer);
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  tick();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCROLL ENGINE
+// ═══════════════════════════════════════════════════════════════
+function startScrollLoop() {
+  cancelAnimationFrame(state.rafId);
+  const inner = document.getElementById('script-inner');
+  let lastTime = performance.now();
+
+  function loop(now) {
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    if (!state.isPaused && state.currentWordIndex < state.words.length) {
+      const newIndex = Math.min(
+        state.currentWordIndex + state.wordsPerSecond * dt,
+        state.words.length - 1
+      );
+      if (Math.floor(newIndex) > Math.floor(state.currentWordIndex)) {
+        const idx = Math.floor(newIndex);
+        highlightWords(idx);
+        scrollToWord(idx, false);
+        updateProgress(idx);
+        if (idx >= state.words.length - 1) onScriptComplete();
+      }
+      state.currentWordIndex = newIndex;
+    }
+
+    if (isLandscape()) {
+      const dx = state.targetScrollX - state.scrollX;
+      if (Math.abs(dx) > 0.5) { state.scrollX += dx * 0.08; inner.style.transform = `translateX(${-state.scrollX}px)`; }
+    } else {
+      const dy = state.targetScrollY - state.scrollY;
+      if (Math.abs(dy) > 0.5) { state.scrollY += dy * 0.08; inner.style.transform = `translateY(${-state.scrollY}px)`; }
+    }
+
+    state.rafId = requestAnimationFrame(loop);
+  }
+  state.rafId = requestAnimationFrame(loop);
+}
+
+function highlightWords(activeIdx) {
+  document.querySelectorAll('.script-word').forEach((span, i) => {
+    span.className = 'script-word';
+    if      (i < activeIdx)    span.classList.add('spoken');
+    else if (i === activeIdx)  span.classList.add('active');
+    else if (i <= activeIdx+6) span.classList.add('upcoming');
+  });
+}
+
+function scrollToWord(idx, immediate) {
+  const span = document.querySelector(`.script-word[data-index="${idx}"]`);
+  if (!span) return;
+  const container = document.getElementById('script-container');
+
+  if (isLandscape()) {
+    const target = Math.max(0, span.offsetLeft - container.offsetWidth * 0.28);
+    state.targetScrollX = target;
+    if (immediate) { state.scrollX = target; document.getElementById('script-inner').style.transform = `translateX(${-target}px)`; }
+  } else {
+    const target = Math.max(0, span.offsetTop - container.offsetHeight * 0.28);
+    state.targetScrollY = target;
+    if (immediate) { state.scrollY = target; document.getElementById('script-inner').style.transform = `translateY(${-target}px)`; }
+  }
+}
+
+function updateProgress(idx) {
+  const pct = (idx / (state.words.length - 1)) * 100;
+  const pb  = document.getElementById('progress-bar');
+  if (isLandscape()) { pb.style.height = pct + '%'; pb.style.width = '2px'; }
+  else               { pb.style.width  = pct + '%'; pb.style.height = '2px'; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECORDING — max quality for iOS
+// ═══════════════════════════════════════════════════════════════
+function startRecording() {
+  if (!state.cameraStream) return;
+
+  // Combine video from camera with the raw (unprocessed) audio stream for best quality
+  const combined = new MediaStream([
+    ...state.cameraStream.getVideoTracks(),
+    ...(state.micStream ? state.micStream.getAudioTracks() : [])
+  ]);
+
+  // Codec priority: iOS Safari supports mp4/H.264/AAC natively.
+  // We try the most specific codec string first for maximum bitrate control.
+  const codecCandidates = [
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4;codecs=avc1',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    ''
+  ];
+
+  let mr;
+  for (const mime of codecCandidates) {
+    try {
+      if (mime && !MediaRecorder.isTypeSupported(mime)) continue;
+      mr = new MediaRecorder(combined, {
+        ...(mime ? { mimeType: mime } : {}),
+        videoBitsPerSecond: 10_000_000, // 10 Mbps — iOS honours this up to hardware cap
+        audioBitsPerSecond:    320_000  // 320 kbps AAC
+      });
+      state.recordingMime = mime || mr.mimeType || 'video/webm';
+      break;
+    } catch(e) { /* try next */ }
+  }
+  if (!mr) { showToast('Recording not supported on this browser'); return; }
+
+  state.recordedChunks = [];
+  mr.ondataavailable = e => { if (e.data && e.data.size > 0) state.recordedChunks.push(e.data); };
+  mr.start(500); // collect chunks every 500 ms
+  state.mediaRecorder = mr;
+  state.isRecording   = true;
+  document.getElementById('rec-btn').classList.add('recording');
+}
+
+function stopRecording() {
+  if (state.mediaRecorder && state.isRecording) {
+    state.mediaRecorder.stop();
+    state.isRecording = false;
+    document.getElementById('rec-btn').classList.remove('recording');
+  }
+}
+
+function saveRecording() {
+  if (!state.recordedChunks.length) { showToast('No recording to save'); return; }
+
+  const isMP4    = (state.recordingMime || '').includes('mp4');
+  const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
+  const ext      = isMP4 ? 'mp4' : 'webm';
+  const blob     = new Blob(state.recordedChunks, { type: mimeType });
+  const filename = `promptercam-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`;
+
+  // iOS: share with a File object — user taps "Save to Photos" or "Save to Files"
+  if (navigator.canShare && navigator.share) {
+    const file = new File([blob], filename, { type: mimeType });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'PrompterCam Recording' })
+        .catch(e => { if (e.name !== 'AbortError') fallbackDownload(URL.createObjectURL(blob), filename); });
+      return;
+    }
+  }
+  fallbackDownload(URL.createObjectURL(blob), filename);
+}
+
+function fallbackDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS / UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function updateStatus(mode) {
+  const pill = document.getElementById('status-pill');
+  const txt  = document.getElementById('status-text');
+  pill.className = mode; // 'calibrating' | 'speaking' | 'paused'
+  if      (mode === 'speaking')    txt.textContent = 'Speaking';
+  else if (mode === 'paused')      txt.textContent = 'Paused';
+  else if (mode === 'calibrating') txt.textContent = 'Calibrating…';
+}
+
+function onScriptComplete() {
+  state.isPaused = true;
+  cancelAnimationFrame(state.rafId);
+  stopRecording();
+  setTimeout(() => {
+    document.getElementById('finish-overlay').classList.add('show');
+    document.getElementById('save-btn').style.display = state.recordedChunks.length ? '' : 'none';
+  }, 700);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function endSession() {
+  stopRecording();
+  cancelAnimationFrame(state.rafId);
+  clearTimeout(state.silenceTimer);
+  if (state.analysisStream) { state.analysisStream.getTracks().forEach(t => t.stop()); state.analysisStream = null; }
+  if (state.cameraStream)   { state.cameraStream.getTracks().forEach(t => t.stop());   state.cameraStream   = null; }
+  if (state.micStream)      { state.micStream.getTracks().forEach(t => t.stop());       state.micStream      = null; }
+  if (state.audioCtx)       { state.audioCtx.close(); state.audioCtx = null; }
+  state.analyser = null;
+  document.getElementById('prompter').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('finish-overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HUD BUTTONS
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('rec-btn').addEventListener('click', () => {
+  if (state.isRecording) stopRecording();
+  else if (state.cameraStream) startRecording();
+  else showToast('Camera not ready');
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  state.currentWordIndex = 0;
+  state.scrollX = 0; state.scrollY = 0;
+  state.targetScrollX = 0; state.targetScrollY = 0;
+  state.isPaused = true; state.isSpeaking = false;
+  state.fastHistory = []; state.slowHistory = [];
+  clearTimeout(state.silenceTimer);
+  highlightWords(0);
+  document.getElementById('script-inner').style.transform = '';
+  const pb = document.getElementById('progress-bar');
+  pb.style.width = '0%'; pb.style.height = '0%';
+  document.getElementById('finish-overlay').classList.remove('show');
+  cancelAnimationFrame(state.rafId);
+  startScrollLoop();
+  updateStatus('paused');
+});
+
+document.getElementById('back-btn').addEventListener('click', endSession);
+document.getElementById('save-btn').addEventListener('click', saveRecording);
+document.getElementById('restart-btn').addEventListener('click', () => {
+  document.getElementById('finish-overlay').classList.remove('show');
+  document.getElementById('reset-btn').click();
+});
+document.getElementById('edit-btn').addEventListener('click', endSession);
+
+// ═══════════════════════════════════════════════════════════════
+// WAKE LOCK — keep screen on during session
+// ═══════════════════════════════════════════════════════════════
+let wakeLock = null;
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+  catch(e) {}
+}
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible') {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+  }
+});
+</script>
+</body>
+</html>
